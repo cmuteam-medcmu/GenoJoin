@@ -1,0 +1,13 @@
+services:
+  joint-cv:
+    image: joint-cv:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VERSION: 1.0.0
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python /app/src/main.py

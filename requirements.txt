@@ -1,0 +1,10 @@
+pysam
+pytabix
+biopython
+gensim
+numpy
+pandas
+scipy
+faiss-cpu
+tqdm
+psutil

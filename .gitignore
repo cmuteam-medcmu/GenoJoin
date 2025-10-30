@@ -1,0 +1,5 @@
+# Python 
+src/__pycache__/
+
+# Data
+data/*
