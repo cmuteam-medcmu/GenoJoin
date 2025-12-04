@@ -1,1 +1,1 @@
-# joint-vc
+# GenoJoin
