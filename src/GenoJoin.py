@@ -1,20 +1,14 @@
-import logging
-import os
-import sys
 import threading
-from functools import update_wrapper
 from multiprocessing import Pool
-from time import sleep, time
+from time import time
 
-import numpy as np
-import pandas as pd
 import psutil
-from loader import ArgConfig
 from tqdm import tqdm
-from utils import *
 
 from extract_regions import Extract_region
+from loader import ArgConfig
 from sentence2vec import WordDatabase
+from utils import *
 
 
 def track_usage(pids, stop_flag, result_dict):

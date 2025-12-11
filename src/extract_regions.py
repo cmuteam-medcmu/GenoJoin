@@ -2,7 +2,7 @@ import os
 from time import time
 
 import tabix
-from Bio import SeqIO
+
 from utils import FormatTransform, TimeStamp
 
 
