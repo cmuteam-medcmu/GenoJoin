@@ -34,7 +34,7 @@ def track_usage(pids, stop_flag, result_dict):
     result_dict["max_mem"] = max_mem
 
 
-def main(setList, logger):
+def main(setList):
     n = len(setList)
     with tqdm(total=n, miniters=n // 10, desc="Processing") as pbar:
         for item in setList:
@@ -79,11 +79,9 @@ def main(setList, logger):
             summary = SummaryVariants(all_var, uniq_var, samples, w.filter_var)
             join_ts = TimeStamp("join", st)
 
-            logger.info(
-                f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n{summary}\n{join_ts}\n"
-            )
-
             pbar.update(1)
+
+    return f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n{summary}\n{join_ts}\n"
 
 
 if __name__ == "__main__":
@@ -104,16 +102,20 @@ if __name__ == "__main__":
         )
         monitor_thread.start()
 
-        results = pool.starmap(main, [(data, logger) for data in dataList])
+        results = pool.map(main, dataList)
 
         stop_flag.set()
         monitor_thread.join()
         pool.close()
         pool.join()
 
+        for r in results:
+            logger.info(f"{r}")
+
         print(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
         )
+
         logger.info(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
         )
