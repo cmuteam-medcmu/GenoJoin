@@ -2,4 +2,4 @@
 src/__pycache__/
 
 # Data
-data/*
+data/regions/hg38.centromere.bed

@@ -1,50 +1,68 @@
 import os
-import tabix
 from time import time
+
+import tabix
 from Bio import SeqIO
+from utils import FormatTransform, TimeStamp
 
 
-def Extract_region(dirpath, chr, start, end):
+def Extract_region(dirpath, chr, start, end, qual, depth, gq):
     start_time = time()
-    fasta_path = '/mnt/sas/ref/hg38/v0/Homo_sapiens_assembly38.fasta'
+    germline = []
     variants = []
-    oo = 0
-    for path in os.listdir(dirpath):
-        if path.endswith("g.vcf.gz"):
+    for path in sorted(os.listdir(dirpath)):
+        if path.endswith("norm.vcf.gz"):
+
             tbx = tabix.open(f"{dirpath}/{path}")
 
             records = tbx.query(chr, start, end)
             for vix, var in enumerate(records):
-                
-                if var[4] == '<*>' or var[4] == '':
-                    variants.append([f'{var[0]} {var[1]} {var[3]} {var[3]}', oo])
-                    
-                    continue
-                elif ',<*>' in var[4]:
-                    var[4] = var[4][:-4]
-                
-                pos = int(var[1])
 
-                if var[4].count(',') > 0:
-                    for allele in var[4].split(','):
-                        if len(var[3]) == len(allele) and len(var[3]) > 1:
-                            for zix, (zet1, zet2) in enumerate(zip(var[3],allele)):
-                                var[1] = pos + zix
-                                variants.append([f'{var[0]} {var[1]} {zet1} {zet2}', oo]) 
-                                print([f'{var[0]} {var[1]} {zet1} {zet2}', oo])
-                        else:
-                            variants.append([f'{var[0]} {var[1]} {var[3]} {allele}', oo]) 
+                # Format must be (GT:GQ:DP:AD:AF:PL)
+                eachVar = FormatTransform(var[9])
+                eachVar.append(var[5])
+
+                if int(eachVar[1]) < gq:
+                    continue
+
+                ADs = list(map(int, eachVar[3].split(",")))
+                if var[4] == "<*>" or var[4] == "":
+                    var[4] = var[3]
+                    if int(eachVar[2]) < depth:
+                        eachVar[0] = "./."
+                    else:
+                        eachVar[0] = "0/0"
+
+                    germline.append(
+                        [
+                            f"{var[0]} {var[1]} {var[3]} {var[4]}",
+                            ":".join(eachVar),
+                            path.split("_")[0],
+                        ]
+                    )
 
                 else:
-                    if len(var[3]) == len(var[4]) and len(var[3]) > 1:
-                        for zix, (zet1, zet2) in enumerate(zip(var[3],var[4])):
-                            var[1] = pos + zix
-                            variants.append([f'{var[0]} {var[1]} {zet1} {zet2}', oo])
-                    else:
-                        variants.append([f'{var[0]} {var[1]} {var[3]} {var[4]}', oo])
+                    if float(var[5]) >= qual:
+                        AD = ADs[1] / (ADs[0] + ADs[1])
+                        if AD > 0.2 and AD <= 0.8:
+                            eachVar[0] = "0/1"
+                        elif AD <= 0.2:
+                            continue
+                        elif AD > 0.8:
+                            eachVar[0] = "1/1"
 
-            oo += 1
+                        variants.append(
+                            [
+                                f"{var[0]} {var[1]} {var[3]} {var[4]}",
+                                ":".join(eachVar),
+                                path.split("_")[0],
+                            ]
+                        )
 
-    end_time = time() - start_time
-    print(f'>> Extract Regions: {end_time:.2f} sec')
-    return variants, list(dict.fromkeys(item[0] for item in variants))
+    TimeStamp("extract", start_time)
+    return (
+        germline,
+        variants,
+        list(dict.fromkeys(item[0] for item in variants)),
+        list(dict.fromkeys(item[2] for item in variants)),
+    )
