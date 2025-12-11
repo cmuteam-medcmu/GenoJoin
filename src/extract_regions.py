@@ -19,8 +19,11 @@ def Extract_region(dirpath, chr, start, end, qual, depth, gq):
             for vix, var in enumerate(records):
 
                 # Format must be (GT:GQ:DP:AD:AF:PL)
-                eachVar, Var = FormatTransform(var[8], var[9])
+                eachVar, Var, PASS = FormatTransform(var[8], var[9])
                 eachVar.append(var[5])
+
+                if not PASS:
+                    continue
 
                 if int(eachVar[1]) < gq:
                     continue
