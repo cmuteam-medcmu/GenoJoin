@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime
-from logging.handlers import FileHandler, StreamHandler
+from logging import FileHandler, StreamHandler
 from time import time
 
 import pandas as pd
@@ -118,16 +118,15 @@ class Logger:
         formatter = logging.Formatter("%(asctime)s | %(message)s", "%Y-%m-%d %H:%M:%S")
 
         self.logger = logging.getLogger(f"GenoJoin")
-        self.logger.setLevel(logging.INFO)
 
         # File handler
         fh = FileHandler(self.log_path)
-        fh.setLevel(self.level)
+        fh.setLevel(logging.INFO)
         fh.setFormatter(formatter)
 
         # Console handler
         ch = StreamHandler()
-        ch.setLevel(self.level)
+        ch.setLevel(logging.INFO)
         ch.setFormatter(formatter)
 
         # Register handlers
