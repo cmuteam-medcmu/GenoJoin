@@ -81,7 +81,7 @@ def main(setList):
 
             pbar.update(1)
 
-    return f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n{summary}\n{join_ts}\n"
+    return f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n                    | {summary}\n                    | {join_ts}\n"
 
 
 if __name__ == "__main__":
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     cfg = ArgConfig().load()
 
     logger = Logger(cfg.raw["outdir"]).run()
-    logger.info(">> Start Processing")
+    logger.info("Start Processing")
     threads, dataList = ThreadsManager(cfg).main()
 
     with Pool(processes=threads) as pool:
