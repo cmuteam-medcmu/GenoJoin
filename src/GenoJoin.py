@@ -35,6 +35,7 @@ def track_usage(pids, stop_flag, result_dict):
 
 
 def main(setList):
+    results = []
     n = len(setList)
     with tqdm(total=n, miniters=n // 10, desc="Processing") as pbar:
         for item in setList:
@@ -74,14 +75,14 @@ def main(setList):
             # Query DB
             w.QueryDB(outname, f"{chromosome}_{pos_start}_{pos_end}")
 
-            print("\n")
-            print(f"[Region] {chromosome}\t{pos_start}\t{pos_end}")
             summary = SummaryVariants(all_var, uniq_var, samples, w.filter_var)
             join_ts = TimeStamp("join", st)
-
+            results.append(
+                f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n                    | {summary}\n                    | {join_ts}\n"
+            )
             pbar.update(1)
 
-    return f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n                    | {summary}\n                    | {join_ts}\n"
+    return results
 
 
 if __name__ == "__main__":
@@ -110,7 +111,8 @@ if __name__ == "__main__":
         pool.join()
 
         for r in results:
-            logger.info(f"{r}")
+            for item in r:
+                logger.info(f"{item}")
 
         print(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"

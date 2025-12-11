@@ -17,17 +17,18 @@ from utils import RemoveNoise, RemoveRef
 class WordDatabase:
     def __init__(self, sentences_train, region, dbdir):
 
-        if os.path.exists(f"{dbdir}/GJ_{region}.db"):
+        # SQLite database
+        os.mkdir(f"{dbdir}/GenoJion_DB")
+
+        if os.path.exists(f"{dbdir}/GenoJion_DB/GJ_{region}.db"):
             print(f"Already has GJ_{region}.db")
             os._exit(1)
 
-        # SQLite database
-        if not os.path.isdir(dbdir):
-            os.mkdir(dbdir)
-
         self.dbdir = dbdir
 
-        engine = create_engine(f"sqlite:///{dbdir}/GJ_{region}.db", echo=False)
+        engine = create_engine(
+            f"sqlite:///{dbdir}/GenoJion_DB/GJ_{region}.db", echo=False
+        )
 
         # Create table
         Base.metadata.create_all(engine)
@@ -58,7 +59,7 @@ class WordDatabase:
             "QUAL": 0,
             "FILTER": ".",
             "INFO": ".",
-            "FORMAT": "GT:GQ:DP:AD:AF:PL",
+            "FORMAT": "GT:GQ:DP:AD:PL",
         }
 
         for sample in samples:
@@ -183,7 +184,7 @@ class WordDatabase:
     def QueryDB(self, fname, regions):
         ref_dict = self.createDict()
 
-        no_var = "./.:.:.:.,.:.:.,.,."
+        no_var = "./.:.:.:.,.:.,.,."
 
         var_ids = (
             self.session.query(Variant)

@@ -1,6 +1,7 @@
 import logging
 import os
-from logging.handlers import RotatingFileHandler
+from datetime import datetime
+from logging.handlers import FileHandler, StreamHandler
 from time import time
 
 import pandas as pd
@@ -13,13 +14,12 @@ def CheckExist(path: str, key: str) -> bool:
         return os.path.isfile(path)
 
 
-def TimeStamp(key: str, start_time: time) -> None:
+def TimeStamp(key: str, start_time: time) -> str:
     stamp_headline = {
         "join": "Join Variants",
         "total": "Total Time",
     }
     end_time = time() - start_time
-    print(f">> {stamp_headline[key]}: {end_time:.2f} sec")
 
     return f"{stamp_headline[key]}: {end_time:.2f} sec"
 
@@ -112,17 +112,27 @@ class ThreadsManager:
 
 class Logger:
     def __init__(self, outdir):
-        self.outdir = outdir
-
-        handler = RotatingFileHandler("monitor.log", maxBytes=5_000_000, backupCount=3)
+        now = datetime.now().strftime("%Y-%m-%d")
+        self.log_path = os.path.join(outdir, f"monitor-{now}.log")
 
         formatter = logging.Formatter("%(asctime)s | %(message)s", "%Y-%m-%d %H:%M:%S")
 
-        handler.setFormatter(formatter)
-
-        self.logger = logging.getLogger("monitor")
+        self.logger = logging.getLogger(f"GenoJoin")
         self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(handler)
+
+        # File handler
+        fh = FileHandler(self.log_path)
+        fh.setLevel(self.level)
+        fh.setFormatter(formatter)
+
+        # Console handler
+        ch = StreamHandler()
+        ch.setLevel(self.level)
+        ch.setFormatter(formatter)
+
+        # Register handlers
+        self.logger.addHandler(fh)
+        self.logger.addHandler(ch)
 
         self.logo: str = """================================================
   _____                       _       _       
@@ -133,31 +143,24 @@ class Logger:
  \_____|\___|_| |_|\___/ \____/ \___/|_|_| |_|
                                             
 ================================================
-        Songphon Sutthitthasakul
+          Songphon Sutthitthasakul  
 
         CMUTEAM, Faculty of Medicine, 
             Chiang Mai University
-================================================"""
+================================================\n"""
 
     def run(self):
 
         print(self.logo)
 
-        with open(f"{self.outdir}/monitor.log", "a") as log:
+        with open(self.log_path, "a") as log:
             log.write(f"{self.logo}\n")
             log.close()
 
         return self.logger
 
 
-def SummaryVariants(
-    all_vars: list, uniq_vars: list, samples: list, filter: int
-) -> None:
-    print(f"Total samples     : {len(samples)}")
-    print(f"Total variants    : {len(all_vars)}")
-    print(f"Total unique      : {len(uniq_vars)}")
-    print(f"Filtered variants : {filter}")
-
+def SummaryVariants(all_vars: list, uniq_vars: list, samples: list, filter: int) -> str:
     return f"Total samples     : {len(samples)}\n                    | Total variants    : {len(all_vars)}\n                    | Total unique      : {len(uniq_vars)}\n                    | Filtered variants : {filter}"
 
 
