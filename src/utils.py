@@ -163,10 +163,21 @@ def SummaryVariants(all_vars: list, uniq_vars: list, samples: list) -> None:
 def FormatTransform(format: str, variant: str) -> list:
     form = format.split(":")
     var = variant.split(":")
-
     new_var = []
 
+    if len(form) < 4:
+        return new_var, var, False
+
     new_var.append(var[form.index("GT")])
+
+    try:
+        DP = form.index("DP")
+    except ValueError:
+        DP = -1
+
+    if DP == -1:
+        return new_var, var, False
+
     new_var.append(var[form.index("GQ")])
     new_var.append(var[form.index("DP")])
 
@@ -182,7 +193,7 @@ def FormatTransform(format: str, variant: str) -> list:
 
     new_var.append(var[form.index("PL")])
 
-    return new_var, var
+    return new_var, var, True
 
 
 def get_prefix(s: str) -> str:
