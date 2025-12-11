@@ -176,9 +176,9 @@ def FormatTransform(format: str, variant: str) -> list:
         AD = -1
 
     if AD == -1:
-        new_var.append(f'{var["DP"]},0')
+        new_var.append(f'{var[form.index("DP")]},0')
     else:
-        new_var.append(var["AD"])
+        new_var.append(var[form.index("AD")])
 
     new_var.append(var[form.index("PL")])
 
