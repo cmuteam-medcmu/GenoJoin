@@ -153,27 +153,28 @@ class WordDatabase:
         sentences_ref = RemoveRef(sentences_var, sentences_ref)
         sentences_ref = RemoveNoise(self.sentences_train, sentences_ref)
         sentences_ref_query = [item[0] for item in sentences_ref]
-        tokenized_ref_query = [s.split() for s in sentences_ref_query]
-        vectors_ref_query = np.array(
-            [self.sentence_vector(t, self.model) for t in tokenized_ref_query],
-            dtype="float32",
-        )
-        faiss.normalize_L2(vectors_ref_query)
+        if len(sentences_ref_query) != 0:
+            tokenized_ref_query = [s.split() for s in sentences_ref_query]
+            vectors_ref_query = np.array(
+                [self.sentence_vector(t, self.model) for t in tokenized_ref_query],
+                dtype="float32",
+            )
+            faiss.normalize_L2(vectors_ref_query)
 
-        distances, indices = self.index.search(vectors_ref_query, 1)
-        for row, dataset_idx in enumerate(indices[:, 0]):
-            if not self.compare_ref(
-                self.sentences_train[dataset_idx], sentences_ref_query[row]
-            ):
-                continue
-            else:
-                map_data.append(
-                    {
-                        "name": sample,
-                        "vid": int(dataset_idx) + 1,
-                        "pat": sentences_ref[row][1],
-                    }
-                )
+            distances, indices = self.index.search(vectors_ref_query, 1)
+            for row, dataset_idx in enumerate(indices[:, 0]):
+                if not self.compare_ref(
+                    self.sentences_train[dataset_idx], sentences_ref_query[row]
+                ):
+                    continue
+                else:
+                    map_data.append(
+                        {
+                            "name": sample,
+                            "vid": int(dataset_idx) + 1,
+                            "pat": sentences_ref[row][1],
+                        }
+                    )
 
         sampleMap = [Sample(**m) for m in map_data]
         self.session.bulk_save_objects(sampleMap)
