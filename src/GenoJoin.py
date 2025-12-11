@@ -1,55 +1,110 @@
-import os
-import psutil
 import threading
-import numpy as np
+from multiprocessing import Pool
 from time import time
+
+import psutil
+from tqdm import tqdm
+
 from extract_regions import Extract_region
+from loader import ArgConfig
 from sentence2vec import WordDatabase
+from utils import *
 
-def track_usage(stop_flag, results):
-    p = psutil.Process(os.getpid())
-    max_cpu = max_mem = 0
+
+def track_usage(pids, stop_flag, result_dict):
+    max_cpu = 0
+    max_mem = 0
+
     while not stop_flag.is_set():
-        cpu = p.cpu_percent(interval=1)
-        mem = p.memory_info().rss / (1024**2)
-        max_cpu = max(max_cpu, cpu)
-        max_mem = max(max_mem, mem)
-    results["cpu"] = max_cpu
-    results["mem"] = max_mem
+        cpu_total = 0
+        mem_total = 0
 
-def monitor_function(func, *args, **kwargs):
-    stop_flag = threading.Event()
-    results = {}
-    t = threading.Thread(target=track_usage, args=(stop_flag, results))
-    t.start()
+        for pid in pids:
+            try:
+                p = psutil.Process(pid)
+                cpu_total += p.cpu_percent(interval=0.1)
+                mem_total += p.memory_info().rss / (1024 * 1024)  # MB
+            except psutil.NoSuchProcess:
+                continue
 
-    # run target function
-    func(*args, **kwargs)
+        max_cpu = max(max_cpu, cpu_total)
+        max_mem = max(max_mem, mem_total)
 
-    # stop monitoring
-    stop_flag.set()
-    t.join()
-    print(f"Max CPU: {(np.round(results['cpu'])/100):.2f} | Max Mem: {results['mem']:.2f} MB")
+    result_dict["max_cpu"] = max_cpu
+    result_dict["max_mem"] = max_mem
 
 
-def main():
-    dirpath = '/mnt/hdd/public/share_resource/CRU_cfDNA/Code_session/McFeatures/Term_project/dv_vcf'
+def main(setList):
+    n = len(setList)
+    with tqdm(total=n, miniters=n // 10, desc="Processing") as pbar:
+        for item in setList:
 
-    # Extract 
-    all_var, uniq_var = Extract_region(dirpath, "chr12", 1, 1_000_000)
-    print(f'Total variants : {len(all_var)}')
-    print(f'Total unique   : {len(uniq_var)}')
+            (
+                inputdir,
+                outname,
+                dbdir,
+                chromosome,
+                pos_start,
+                pos_end,
+                qual,
+                depth,
+                gq,
+            ) = item
 
-    w = WordDatabase(uniq_var)
-    w.CreateDB(10)
+            print("\n")
+            print(f"[Region] {chromosome}\t{pos_start}\t{pos_end}")
 
-    first_items = []
-    for sublist in all_var:
-        first_items.append(sublist[0])
+            # Extract
+            all_ref, all_var, uniq_var, samples = Extract_region(
+                inputdir, chromosome, pos_start, pos_end, qual, depth, gq
+            )
 
-    w.QueryDB(first_items)
+            SummaryVariants(all_var, uniq_var, samples)
+
+            # Create DB
+            w = WordDatabase(uniq_var, f"{chromosome}_{pos_start}_{pos_end}", dbdir)
+            w.CreateDB(threads=1)
+
+            # Map DB
+            s_time = time()
+            for sample_idx, sample in enumerate(samples):
+                sentence_var = [var[:2] for var in all_var if var[2] == sample]
+                sentence_ref = [var[:2] for var in all_ref if var[2] == sample]
+                w.MapDB(sample, sentence_var, sentence_ref)
+
+            TimeStamp("map", s_time)
+
+            # Query DB
+            w.QueryDB(outname, f"{chromosome}_{pos_start}_{pos_end}")
+            pbar.update(1)
 
 
-start_time = time()
-monitor_function(main)
-print(f'\n>> Run Time: {(time() - start_time):.2f} sec')
+if __name__ == "__main__":
+
+    start_time = time()
+    cfg = ArgConfig().load()
+
+    logger = Logger(cfg.raw["outdir"]).run()
+    threads, dataList = ThreadsManager(cfg).main()
+
+    with Pool(processes=threads) as pool:
+        pids = [p.pid for p in pool._pool]
+        stop_flag = threading.Event()
+        result_dict = {}
+        monitor_thread = threading.Thread(
+            target=track_usage, args=(pids, stop_flag, result_dict)
+        )
+        monitor_thread.start()
+
+        results = pool.map(main, dataList)
+
+        stop_flag.set()
+        monitor_thread.join()
+        pool.close()
+        pool.join()
+
+        print(
+            f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
+        )
+
+    TimeStamp("total", start_time)

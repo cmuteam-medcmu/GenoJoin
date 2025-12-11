@@ -1,23 +1,71 @@
+import os
+import subprocess
+from collections import Counter
+from pathlib import Path
+from time import time
+
 import faiss
 import numpy as np
-from time import time
-# from nltk.tokenize import word_tokenize
+import pandas as pd
 from gensim.models import Word2Vec
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-# Example sentences
-# sentences_train = [
-#     "CHR1 10000001 C A.",
-#     "CHR1 10000001 C G.",
-#     "CHR1 10000001 C T.",
-#     "CHR1 10000002 T C.",
-#     "CHR1 10000002 T T.",
-#     "CHR1 10000005 A AG.",
-#     "CHR1 10000012 C -.",
-# ]
+from schema import Base, Sample, Variant
+from utils import RemoveNoise, RemoveRef, TimeStamp
+
 
 class WordDatabase:
-    def __init__(self, sentences_train):
+    def __init__(self, sentences_train, region, dbdir):
+
+        if os.path.exists(f"{dbdir}/GJ_{region}.db"):
+            print(f"Already has GJ_{region}.db")
+            os._exit(1)
+
+        # SQLite database
+        if not os.path.isdir(dbdir):
+            os.mkdir(dbdir)
+
+        self.dbdir = dbdir
+
+        engine = create_engine(f"sqlite:///{dbdir}/GJ_{region}.db", echo=False)
+
+        # Create table
+        Base.metadata.create_all(engine)
+
+        # Session for transactions
+        Session = sessionmaker(bind=engine)
+        self.session = Session()
         self.sentences_train = sentences_train
+
+        BASE_DIR = Path(__file__).resolve().parent.parents[1]
+        self.vcf_header = BASE_DIR / "vcf" / "vcf_header.txt"
+
+    def createDict(self):
+        samples = [
+            v[0]
+            for v in self.session.query(Sample.name)
+            .distinct()
+            .order_by(Sample.name)
+            .all()
+        ]
+
+        samples_dict = {
+            "#CHROM": None,
+            "POS": None,
+            "ID": ".",
+            "REF": None,
+            "ALT": None,
+            "QUAL": 0,
+            "FILTER": ".",
+            "INFO": ".",
+            "FORMAT": "GT:GQ:DP:AD:AF:PL",
+        }
+
+        for sample in samples:
+            samples_dict[sample] = None
+
+        return samples_dict
 
     @classmethod
     def sentence_vector(cls, tokens, model):
@@ -26,71 +74,178 @@ class WordDatabase:
             return np.zeros(model.vector_size)
         return np.mean(vecs, axis=0)
 
-    def CreateDB(self, threads):
+    def compare_ref(self, var: str, ref: str) -> bool:
+
+        parts_var = var.split(" ")
+        parts_ref = ref.split(" ")
+
+        # compare first two fields
+        return (
+            parts_var[0] == parts_ref[0]
+            and parts_var[1] == parts_ref[1]
+            and parts_var[2][0] == parts_ref[2]
+        )
+
+    def CreateDB(self, threads=1):
         start_time = time()
 
         # Tokenize
-        # tokenized_sentences = [word_tokenize(s) for s in self.sentences_train]
         tokenized_sentences = [s.split() for s in self.sentences_train]
 
         # Train Word2Vec
-        self.model = Word2Vec(tokenized_sentences, vector_size=300, window=5, min_count=1, workers=threads, seed=42)
+        self.model = Word2Vec(
+            tokenized_sentences,
+            vector_size=300,
+            window=5,
+            min_count=1,
+            workers=threads,
+            seed=42,
+        )
 
+        sentence_vectors = np.array(
+            [self.sentence_vector(t, self.model) for t in tokenized_sentences],
+            dtype="float32",
+        )
 
-        sentence_vectors = np.array([self.sentence_vector(t, self.model) for t in tokenized_sentences], dtype='float32')
+        d = self.model.vector_size  # vector dimension
 
-        d = self.model.vector_size # vector dimension
-        
-        faiss.normalize_L2(sentence_vectors)  
-        self.index = faiss.IndexFlatIP(d)  
+        faiss.normalize_L2(sentence_vectors)
+        self.index = faiss.IndexFlatIP(d)
         self.index.add(sentence_vectors)
 
-        end_time = time() - start_time
-        print(f'>> Create Database: {end_time:.2f} sec')
+        self.session.execute(
+            Variant.__table__.insert(),
+            [
+                {
+                    "chrom": v.split(" ")[0],
+                    "pos": int(v.split(" ")[1]),
+                    "ref": v.split(" ")[2],
+                    "alt": v.split(" ")[3],
+                }
+                for v in self.sentences_train
+            ],
+        )
+        self.session.commit()
 
+        TimeStamp("create", start_time)
 
-    def QueryDB(self, sentences_query=None):
+    def MapDB(self, sample, sentences_var, sentences_ref):
+
+        # Variants Mapping
+        sentences_var_query = [item[0] for item in sentences_var]
+        tokenized_var_query = [s.split() for s in sentences_var_query]
+        vectors_var_query = np.array(
+            [self.sentence_vector(t, self.model) for t in tokenized_var_query],
+            dtype="float32",
+        )
+        faiss.normalize_L2(vectors_var_query)
+
+        distances, indices = self.index.search(vectors_var_query, 1)
+        map_data = []
+        for row, dataset_idx in enumerate(indices[:, 0]):
+            if self.sentences_train[dataset_idx] != sentences_var_query[row]:
+                continue
+            else:
+                map_data.append(
+                    {
+                        "name": sample,
+                        "vid": int(dataset_idx) + 1,
+                        "pat": sentences_var[row][1],
+                    }
+                )
+
+        # References Mapping
+        sentences_ref = RemoveRef(sentences_var, sentences_ref)
+        sentences_ref = RemoveNoise(self.sentences_train, sentences_ref)
+        sentences_ref_query = [item[0] for item in sentences_ref]
+        tokenized_ref_query = [s.split() for s in sentences_ref_query]
+        vectors_ref_query = np.array(
+            [self.sentence_vector(t, self.model) for t in tokenized_ref_query],
+            dtype="float32",
+        )
+        faiss.normalize_L2(vectors_ref_query)
+
+        distances, indices = self.index.search(vectors_ref_query, 1)
+        for row, dataset_idx in enumerate(indices[:, 0]):
+            if not self.compare_ref(
+                self.sentences_train[dataset_idx], sentences_ref_query[row]
+            ):
+                continue
+            else:
+                map_data.append(
+                    {
+                        "name": sample,
+                        "vid": int(dataset_idx) + 1,
+                        "pat": sentences_ref[row][1],
+                    }
+                )
+
+        sampleMap = [Sample(**m) for m in map_data]
+        self.session.bulk_save_objects(sampleMap)
+        self.session.commit()
+
+    def QueryDB(self, fname, regions):
         start_time = time()
-        # sentences_query = [
-        #     'chr16 994022 T A', 
-        #     'chr16 994022 T T',
-        #     'chr16 994022 T CA',
-        #     'chr16 994022 T T',
-        # ]
-        # n = len(sentences_query)
-        # by = 10
-        # cy = (n//by)+1
-        # start = 0
-        # end = by
-        # for i in range(cy):
-        start_ti = time()
-        tokenized_query = [s.split() for s in sentences_query[0:10]]
-        vectors_query = np.array([self.sentence_vector(t, self.model) for t in tokenized_query], dtype='float32')
-        faiss.normalize_L2(vectors_query)
+        ref_dict = self.createDict()
 
-            # --- Search top 3 similar sentences in the training set
-        distances, indices = self.index.search(vectors_query, 1)
+        no_var = "./.:.:.:.,.:.:.,.,."
 
-            # start = end 
-            # if i+1 != cy:
-            #     end = by * (i+2)
-            # else:
-            #     end = n
-            # print(start, end)
+        var_ids = (
+            self.session.query(Variant)
+            .order_by(Variant.pos, Variant.ref, Variant.alt)
+            .all()
+        )
 
-            # print(f'\n>> Cyc {i+1}: {(time() - start_ti):.2f} sec')
-        # print(indices)
-        # print(distances)
+        vars_list = [v.__dict__ for v in var_ids]
+        for v in vars_list:
+            v.pop("_sa_instance_state", None)
 
-        for i, (idxs, sims) in enumerate(zip(indices, distances)):
-            # print(f"\nQuery sentence {i}: '{sentences_query[i]}'")
-            for rank, (j, sim) in enumerate(zip(idxs, sims)):
-                if sentences_query[i] != self.sentences_train[j]:
-                    print(f"\nQuery sentence '{sentences_query[i]}' => False")
-                else:
-                    print(f"\nQuery sentence '{sentences_query[i]}' => True")
-                print(f"  sentence {j} ('{self.sentences_train[j]}'), similarity={sim:.2f}\n")
+        join_vars = []
 
-        end_time = time() - start_time
-        print(f'>> Query Database: {end_time:.2f} sec')
-        # return model, index
+        for vix, var_id in enumerate([v["id"] for v in vars_list]):
+            line = ref_dict.copy()
+
+            samples = (
+                self.session.query(Sample.name, Sample.pat)
+                .filter(Sample.vid == var_id)
+                .all()
+            )
+
+            samples_list = [{"name": s[0], "pat": s[1]} for s in samples]
+
+            geno_counts = Counter(s["pat"].split(":")[0] for s in samples_list)
+            if geno_counts.get("0/1", 0) + geno_counts.get("1/1", 0) <= 1:
+                continue
+            else:
+                line["#CHROM"] = vars_list[vix]["chrom"]
+                line["POS"] = vars_list[vix]["pos"]
+                line["REF"] = vars_list[vix]["ref"]
+                line["ALT"] = vars_list[vix]["alt"]
+                qual = []
+                for samp, pat in ((s["name"], s["pat"]) for s in samples_list):
+                    line[samp] = ":".join(pat.split(":")[:-2])
+                    qual.append(round(float(pat.split(":")[-1]), 2))
+
+                line["QUAL"] = np.median(qual)
+                join_vars.append(line)
+
+        print(f"Filtered variants :", len(join_vars))
+        df = pd.DataFrame(join_vars)
+        df.iloc[:, 9:] = df.iloc[:, 9:].fillna(no_var)
+        df.to_csv(
+            f"{self.dbdir}/{fname}_{regions}.vcf", sep="\t", header=True, index=False
+        )
+
+        try:
+            with open(f"{self.dbdir}/{fname}_{regions}_h.vcf", "w") as out_file:
+                subprocess.run(
+                    ["cat", self.vcf_header, f"{self.dbdir}/{fname}_{regions}.vcf"],
+                    stdout=out_file,
+                    check=True,
+                )
+
+            os.remove(f"{self.dbdir}/{fname}_{regions}.vcf")
+        except subprocess.CalledProcessError as e:
+            print(f"Command failed with error: {e}")
+
+        TimeStamp("query", start_time)
