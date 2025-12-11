@@ -15,17 +15,13 @@ def CheckExist(path: str, key: str) -> bool:
 
 def TimeStamp(key: str, start_time: time) -> None:
     stamp_headline = {
-        "start": "Start Processing",
-        "extract": "Extract Variants",
-        "create": "Create Database",
-        "map": "Map Database",
-        "query": "Query Database",
-        "write": "Write File",
-        "end": "End Processing",
+        "join": "Join Variants",
         "total": "Total Time",
     }
     end_time = time() - start_time
     print(f">> {stamp_headline[key]}: {end_time:.2f} sec")
+
+    return f">> {stamp_headline[key]}: {end_time:.2f} sec"
 
 
 class ThreadsManager:
@@ -154,10 +150,15 @@ class Logger:
         return self.logger
 
 
-def SummaryVariants(all_vars: list, uniq_vars: list, samples: list) -> None:
-    print(f"Total samples  : {len(samples)}")
-    print(f"Total variants : {len(all_vars)}")
-    print(f"Total unique   : {len(uniq_vars)}")
+def SummaryVariants(
+    all_vars: list, uniq_vars: list, samples: list, filter: int
+) -> None:
+    print(f"Total samples     : {len(samples)}")
+    print(f"Total variants    : {len(all_vars)}")
+    print(f"Total unique      : {len(uniq_vars)}")
+    print(f"Filtered variants : {filter}")
+
+    return f"Total samples     : {len(samples)}\nTotal variants    : {len(all_vars)}\nTotal unique      : {len(uniq_vars)}\nFiltered variants : {filter}"
 
 
 def FormatTransform(format: str, variant: str) -> list:
@@ -166,20 +167,31 @@ def FormatTransform(format: str, variant: str) -> list:
     new_var = []
 
     if len(form) < 4:
-        return new_var, var, False
+        return new_var, False
 
     new_var.append(var[form.index("GT")])
 
-    try:
-        DP = form.index("DP")
-    except ValueError:
+    DP_key: str = ""
+    if "DP" in format:
+        DP_key = "DP"
+        try:
+            DP = form.index("MIN_DP")
+        except ValueError:
+            DP = -1
+    elif "MIN_DP" in format:
+        DP_key = "MIN_DP"
+        try:
+            DP = form.index("DP")
+        except ValueError:
+            DP = -1
+    else:
         DP = -1
 
     if DP == -1:
-        return new_var, var, False
+        return new_var, False
 
     new_var.append(var[form.index("GQ")])
-    new_var.append(var[form.index("DP")])
+    new_var.append(var[form.index(DP_key)])
 
     try:
         AD = form.index("AD")
@@ -187,13 +199,13 @@ def FormatTransform(format: str, variant: str) -> list:
         AD = -1
 
     if AD == -1:
-        new_var.append(f'{var[form.index("DP")]},0')
+        new_var.append(f"{var[form.index(DP_key)]},0")
     else:
         new_var.append(var[form.index("AD")])
 
     new_var.append(var[form.index("PL")])
 
-    return new_var, var, True
+    return new_var, True
 
 
 def get_prefix(s: str) -> str:
