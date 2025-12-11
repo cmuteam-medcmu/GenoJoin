@@ -1,8 +1,8 @@
-input_vcf: "GenoJoin/data/vcf"
+input_vcf: "../data/vcf"
 min_qual: 30
 min_gq: 20
 min_depth: 10
 output_name: "test_dv"
-outdir: "GenoJoin/test"
-regions: "GenoJoin/data/regions/ALDH2.bed"
-threads: 20
+outdir: "../test"
+regions: "../data/regions/ALDH2.bed"
+threads: 1
