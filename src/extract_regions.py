@@ -19,14 +19,14 @@ def Extract_region(dirpath, chr, start, end, qual, depth, gq):
             for vix, var in enumerate(records):
 
                 # Format must be (GT:GQ:DP:AD:AF:PL)
-                eachVar = FormatTransform(var[9])
+                eachVar = FormatTransform(var[8], var[9])
                 eachVar.append(var[5])
 
                 if int(eachVar[1]) < gq:
                     continue
 
                 ADs = list(map(int, eachVar[3].split(",")))
-                if var[4] == "<*>" or var[4] == "":
+                if var[4] == "<*>" or var[4] == "<NON_REF>" or var[4] == "":
                     var[4] = var[3]
                     if int(eachVar[2]) < depth:
                         eachVar[0] = "./."

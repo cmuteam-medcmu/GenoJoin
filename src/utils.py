@@ -160,14 +160,27 @@ def SummaryVariants(all_vars: list, uniq_vars: list, samples: list) -> None:
     print(f"Total unique   : {len(uniq_vars)}")
 
 
-def FormatTransform(variant: str) -> list:
+def FormatTransform(format: str, variant: str) -> list:
+    form = format.split(":")
     var = variant.split(":")
 
-    if len(var) < 6:
-        pl = var[3]
-        var[3] = f"{var[2]},0"
-        var.append("0")
-        var.append(pl)
+    new_var = []
+
+    new_var.append(var[form.index("GT")])
+    new_var.append(var[form.index("GQ")])
+    new_var.append(var[form.index("DP")])
+
+    try:
+        AD = form.index("AD")
+    except ValueError:
+        AD = -1
+
+    if AD == -1:
+        new_var.append(f'{var["DP"]},0')
+    else:
+        new_var.append(var["AD"])
+
+    new_var.append(var[form.index("PL")])
 
     return var
 
