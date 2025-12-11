@@ -104,7 +104,7 @@ if __name__ == "__main__":
         )
         monitor_thread.start()
 
-        results = pool.starmap(main, zip(dataList, [logger * threads]))
+        results = pool.starmap(main, [(data, logger) for data in dataList])
 
         stop_flag.set()
         monitor_thread.join()
@@ -112,6 +112,9 @@ if __name__ == "__main__":
         pool.join()
 
         print(
+            f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
+        )
+        logger.info(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
         )
 
