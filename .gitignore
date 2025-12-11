@@ -3,7 +3,3 @@ src/__pycache__/
 
 # Data
 data/regions/hg38.centromere.bed
-
-# Docker
-Dockerfile
-docker-compose.yaml
