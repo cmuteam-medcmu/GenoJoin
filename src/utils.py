@@ -158,7 +158,7 @@ def SummaryVariants(
     print(f"Total unique      : {len(uniq_vars)}")
     print(f"Filtered variants : {filter}")
 
-    return f"Total samples     : {len(samples)}\nTotal variants    : {len(all_vars)}\nTotal unique      : {len(uniq_vars)}\nFiltered variants : {filter}"
+    return f"Total samples     : {len(samples)}\n                    | Total variants    : {len(all_vars)}\n                    | Total unique      : {len(uniq_vars)}\n                    | Filtered variants : {filter}"
 
 
 def FormatTransform(format: str, variant: str) -> list:
