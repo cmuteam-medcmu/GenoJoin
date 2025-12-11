@@ -18,7 +18,7 @@ class WordDatabase:
     def __init__(self, sentences_train, region, dbdir):
 
         # SQLite database
-        os.mkdir(f"{dbdir}/GenoJion_DB")
+        os.mkdir(f"{dbdir}/GenoJion_DB", exist_ok=True)
 
         if os.path.exists(f"{dbdir}/GenoJion_DB/GJ_{region}.db"):
             print(f"Already has GJ_{region}.db")
