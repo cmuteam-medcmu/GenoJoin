@@ -21,7 +21,7 @@ def TimeStamp(key: str, start_time: time) -> None:
     end_time = time() - start_time
     print(f">> {stamp_headline[key]}: {end_time:.2f} sec")
 
-    return f">> {stamp_headline[key]}: {end_time:.2f} sec"
+    return f"{stamp_headline[key]}: {end_time:.2f} sec"
 
 
 class ThreadsManager:
@@ -171,15 +171,12 @@ def FormatTransform(format: str, variant: str) -> list:
 
     new_var.append(var[form.index("GT")])
 
-    DP_key: str = ""
     if "DP" in format:
-        DP_key = "DP"
         try:
             DP = form.index("DP")
         except ValueError:
             DP = -1
     elif "MIN_DP" in format:
-        DP_key = "MIN_DP"
         try:
             DP = form.index("MIN_DP")
         except ValueError:
@@ -191,7 +188,7 @@ def FormatTransform(format: str, variant: str) -> list:
         return new_var, False
 
     new_var.append(var[form.index("GQ")])
-    new_var.append(var[form.index(DP_key)])
+    new_var.append(var[DP])
 
     try:
         AD = form.index("AD")
@@ -199,7 +196,7 @@ def FormatTransform(format: str, variant: str) -> list:
         AD = -1
 
     if AD == -1:
-        new_var.append(f"{var[form.index(DP_key)]},0")
+        new_var.append(f"{var[DP]},0")
     else:
         new_var.append(var[form.index("AD")])
 
