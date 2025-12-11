@@ -43,6 +43,9 @@ def Extract_region(dirpath, chr, start, end, qual, depth, gq):
 
                 else:
                     if float(var[5]) >= qual:
+                        if ADs[0] + ADs[1] == 0:
+                            continue
+
                         AD = ADs[1] / (ADs[0] + ADs[1])
                         if AD > 0.2 and AD <= 0.8:
                             eachVar[0] = "0/1"
