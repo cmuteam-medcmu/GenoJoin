@@ -1,6 +1,6 @@
 pysam==0.22.1
 pytabix==0.1
-biopytho==1.85
+biopython==1.85
 gensim==4.3.3
 numpy==1.26.4
 pandas==2.2.2
