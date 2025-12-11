@@ -3,11 +3,10 @@ from time import time
 
 import tabix
 
-from utils import FormatTransform, TimeStamp
+from utils import FormatTransform
 
 
 def Extract_region(dirpath, chr, start, end, qual, depth, gq):
-    start_time = time()
     germline = []
     variants = []
     for path in sorted(os.listdir(dirpath)):
@@ -65,7 +64,6 @@ def Extract_region(dirpath, chr, start, end, qual, depth, gq):
                             ]
                         )
 
-    TimeStamp("extract", start_time)
     return (
         germline,
         variants,
