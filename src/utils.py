@@ -175,13 +175,13 @@ def FormatTransform(format: str, variant: str) -> list:
     if "DP" in format:
         DP_key = "DP"
         try:
-            DP = form.index("MIN_DP")
+            DP = form.index("DP")
         except ValueError:
             DP = -1
     elif "MIN_DP" in format:
         DP_key = "MIN_DP"
         try:
-            DP = form.index("DP")
+            DP = form.index("MIN_DP")
         except ValueError:
             DP = -1
     else:
