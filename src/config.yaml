@@ -1,8 +1,8 @@
-input_vcf: "/mnt/hdd/public/share_resource/CRU_cfDNA/Code_session/McFeatures/Term_project/norm_dv_vcf"
+input_vcf: "GenoJoin/data/vcf"
 min_qual: 30
 min_gq: 20
 min_depth: 10
 output_name: "test_dv"
-outdir: "/mnt/hdd/public/share_resource/CRU_cfDNA/Code_session/McFeatures/Term_project/GenoJoin/data/test"
-regions: "/mnt/hdd/public/share_resource/CRU_cfDNA/Code_session/McFeatures/Term_project/GenoJoin/data/reference/hg38.1Mb.windows.noCentromere.bed"
+outdir: "GenoJoin/test"
+regions: "GenoJoin/data/regions/ALDH2.bed"
 threads: 20
