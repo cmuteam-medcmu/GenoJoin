@@ -182,7 +182,7 @@ def FormatTransform(format: str, variant: str) -> list:
 
     new_var.append(var[form.index("PL")])
 
-    return new_var
+    return new_var, var
 
 
 def get_prefix(s: str) -> str:
