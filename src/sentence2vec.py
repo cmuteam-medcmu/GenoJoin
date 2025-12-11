@@ -2,7 +2,6 @@ import os
 import subprocess
 from collections import Counter
 from pathlib import Path
-from time import time
 
 import faiss
 import numpy as np
@@ -12,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from schema import Base, Sample, Variant
-from utils import RemoveNoise, RemoveRef, TimeStamp
+from utils import RemoveNoise, RemoveRef
 
 
 class WordDatabase:
@@ -87,8 +86,6 @@ class WordDatabase:
         )
 
     def CreateDB(self, threads=1):
-        start_time = time()
-
         # Tokenize
         tokenized_sentences = [s.split() for s in self.sentences_train]
 
@@ -126,8 +123,6 @@ class WordDatabase:
             ],
         )
         self.session.commit()
-
-        TimeStamp("create", start_time)
 
     def MapDB(self, sample, sentences_var, sentences_ref):
 
@@ -185,7 +180,6 @@ class WordDatabase:
         self.session.commit()
 
     def QueryDB(self, fname, regions):
-        start_time = time()
         ref_dict = self.createDict()
 
         no_var = "./.:.:.:.,.:.:.,.,."
@@ -219,6 +213,9 @@ class WordDatabase:
             else:
                 line["#CHROM"] = vars_list[vix]["chrom"]
                 line["POS"] = vars_list[vix]["pos"]
+                line["ID"] = (
+                    f'{vars_list[vix]["chrom"]}_{vars_list[vix]["pos"]}_{vars_list[vix]["ref"]}_{vars_list[vix]["alt"]}'
+                )
                 line["REF"] = vars_list[vix]["ref"]
                 line["ALT"] = vars_list[vix]["alt"]
                 qual = []
@@ -229,7 +226,7 @@ class WordDatabase:
                 line["QUAL"] = np.median(qual)
                 join_vars.append(line)
 
-        print(f"Filtered variants :", len(join_vars))
+        self.filter_var = len(join_vars)
         df = pd.DataFrame(join_vars)
         df.iloc[:, 9:] = df.iloc[:, 9:].fillna(no_var)
         df.to_csv(
@@ -247,5 +244,3 @@ class WordDatabase:
             os.remove(f"{self.dbdir}/{fname}_{regions}.vcf")
         except subprocess.CalledProcessError as e:
             print(f"Command failed with error: {e}")
-
-        TimeStamp("query", start_time)
