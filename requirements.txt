@@ -9,3 +9,5 @@ tqdm>=4.66.4
 psutil>=7.1.0
 sqlalchemy>=2.0.44
 PyYAML>=6.0.2
+importlib-metadata 
+requests
