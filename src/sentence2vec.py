@@ -38,8 +38,8 @@ class WordDatabase:
         self.session = Session()
         self.sentences_train = sentences_train
 
-        BASE_DIR = Path(__file__).resolve().parent.parents[1]
-        self.vcf_header = BASE_DIR / "vcf" / "vcf_header.txt"
+        BASE_DIR = Path(__file__).resolve().parent.parents[0]
+        self.vcf_header = BASE_DIR / "data" / "vcf" / "vcf_header.txt"
 
     def createDict(self):
         samples = [
