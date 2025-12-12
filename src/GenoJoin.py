@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
         for r in results:
             for item in r:
-                logger.info(f"{item}")
+                logger.info(item)
 
         print(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
