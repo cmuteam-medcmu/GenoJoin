@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime
-from logging import FileHandler, StreamHandler
 from time import time
 
 import pandas as pd
@@ -115,17 +114,13 @@ class Logger:
         now = datetime.now().strftime("%Y-%m-%d")
         self.log_path = os.path.join(outdir, f"monitor-{now}.log")
 
-        formatter = logging.Formatter("%(asctime)s | %(message)s", "%Y-%m-%d %H:%M:%S")
-
-        self.logger = logging.getLogger(f"GenoJoin")
-
         # File handler
-        fh = FileHandler(self.log_path)
-        fh.setLevel(logging.INFO)
-        fh.setFormatter(formatter)
-
-        # Register handlers
-        self.logger.addHandler(fh)
+        logging.basicConfig(
+            filename=self.log_path,
+            level=logging.DEBUG,
+            format="%(asctime)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
         self.logo: str = """================================================
   _____                       _       _       
@@ -149,8 +144,6 @@ class Logger:
         with open(self.log_path, "a") as log:
             log.write(f"{self.logo}\n")
             log.close()
-
-        return self.logger
 
 
 def SummaryVariants(all_vars: list, uniq_vars: list, samples: list, filter: int) -> str:

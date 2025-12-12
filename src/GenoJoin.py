@@ -1,3 +1,4 @@
+import logging
 import threading
 from multiprocessing import Pool
 from time import time
@@ -77,8 +78,7 @@ def main(setList):
 
             summary = SummaryVariants(all_var, uniq_var, samples, w.filter_var)
             join_ts = TimeStamp("join", st)
-
-            results.append(
+            logging.info(
                 f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n                    | {summary}\n                    | {join_ts}\n"
             )
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     cfg = ArgConfig().load()
 
     logger = Logger(cfg.raw["outdir"]).run()
-    logger.info("Start Processing")
+    logging.info("Start Processing")
     threads, dataList = ThreadsManager(cfg).main()
 
     with Pool(processes=threads) as pool:
@@ -112,18 +112,14 @@ if __name__ == "__main__":
         pool.close()
         pool.join()
 
-        for r in results:
-            for item in r:
-                logger.info(item)
-
         print(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
         )
 
-        logger.info(
+        logging.info(
             f"[Usage] CPU: {int(result_dict['max_cpu']/100)} cores | MEM: {result_dict['max_mem']:.1f} MB"
         )
 
     total_ts = TimeStamp("total", start_time)
     print(f">> {total_ts}")
-    logger.info(f"{total_ts}")
+    logging.info(f"{total_ts}")
