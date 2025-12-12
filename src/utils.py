@@ -124,14 +124,8 @@ class Logger:
         fh.setLevel(logging.INFO)
         fh.setFormatter(formatter)
 
-        # Console handler
-        ch = StreamHandler()
-        ch.setLevel(logging.INFO)
-        ch.setFormatter(formatter)
-
         # Register handlers
         self.logger.addHandler(fh)
-        self.logger.addHandler(ch)
 
         self.logo: str = """================================================
   _____                       _       _       

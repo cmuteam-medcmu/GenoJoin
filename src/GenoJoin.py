@@ -77,9 +77,11 @@ def main(setList):
 
             summary = SummaryVariants(all_var, uniq_var, samples, w.filter_var)
             join_ts = TimeStamp("join", st)
+
             results.append(
                 f"[Region] {chromosome}\t{pos_start}\t{pos_end}\n                    | {summary}\n                    | {join_ts}\n"
             )
+
             pbar.update(1)
 
     return results
@@ -123,4 +125,5 @@ if __name__ == "__main__":
         )
 
     total_ts = TimeStamp("total", start_time)
+    print(f">> {total_ts}")
     logger.info(f"{total_ts}")
