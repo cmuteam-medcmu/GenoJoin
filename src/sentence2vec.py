@@ -223,7 +223,10 @@ class WordDatabase:
                 qual = []
                 for samp, pat in ((s["name"], s["pat"]) for s in samples_list):
                     line[samp] = ":".join(pat.split(":")[:-2])
-                    qual.append(round(float(pat.split(":")[-1]), 2))
+                    if "." not in pat.split(":")[-1]: #AS: QUAL can be ".", so assign to 0
+                        qual.append(round(float(pat.split(":")[-1]), 2))
+                    else:
+                        qual.append(0) 
 
                 line["QUAL"] = np.median(qual)
                 join_vars.append(line)
